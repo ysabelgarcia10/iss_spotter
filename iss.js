@@ -52,7 +52,54 @@ const fetchCoordsByIP = function(ip, callback) {
 };
 
 //-----------------------------------------
+//fetchISSFlyOverTimes takes in long/lat and returns the overhead pass predictions
+const fetchISSFlyOverTimes = function(coords, callback) {
+
+  const pathFlyOver = `http://api.open-notify.org/iss-pass.json?lat=${coords.latitude}&lon=${coords.longitude}`;
+
+  request(pathFlyOver, (error, response, body) => {
+    
+    //finds error first such as typo in URL
+    if (error) return callback(error, null);
+    
+    if (response.statusCode !== 200) {
+      callback(Error(`Status code: ${response.statusCode} when fetching overhead pass predictions: ${body}`), null);
+    }
+    
+    const overheadPass = JSON.parse(body);
+    callback(null, overheadPass.response);
+
+  });
+};
+
+//-----------------------------------------
+//nextISSTimesForMyLocation orchestrates all 3 API requests by chaining them one after another
+const nextISSTimesForMyLocation = function(callback) {
+
+  fetchMyIP((error, ip) => {
+    if (error) {
+      return callback(error, null);
+    }
+
+    fetchCoordsByIP(ip, (error, coords) => {
+      if (error) {
+        return callback(error, null);
+      }
+
+      fetchISSFlyOverTimes(coords, (error, nextPasses) => {
+        if (error) {
+          return callback(error, null);
+        }
+
+        callback(null, nextPasses);
+      });
+    });
+  });
+};
+
+
+
+//-----------------------------------------
 module.exports = {
-  fetchMyIP,
-  fetchCoordsByIP
+  nextISSTimesForMyLocation
 };
